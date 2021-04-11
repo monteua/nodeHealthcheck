@@ -5,12 +5,14 @@ from telegram import ParseMode, Update, InlineKeyboardButton, InlineKeyboardMark
 from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQueryHandler, Filters
 
 from api import API
+from sshControl import NodeRestart
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 chat_id = str()
+node_desc = str()
 
 
 def error(update, context):
@@ -57,16 +59,25 @@ def get_node_details(update, context):
 
 
 def button(update: Update, _: CallbackContext) -> None:
+    global node_desc
+
     query = update.callback_query
     query.answer()
 
-    keyboard = [[InlineKeyboardButton(text="< Back", callback_data="back")]]
+    keyboard = [
+        [InlineKeyboardButton(text="Restart Node", callback_data="restart_node")],
+        [InlineKeyboardButton(text="< Back", callback_data="back")]
+    ]
 
     if query.data == "back":
         get_node_details(update, "getUpdates")
-        return
-
-    query.edit_message_text(text=API().get_status_for_node(query.data), reply_markup=InlineKeyboardMarkup(keyboard))
+    elif query.data == "restart_node":
+        NodeRestart().restart(API().get_node_api(node_desc))
+        query.message.reply_text(text="Node was scheduled for restart")
+        send_nodes_status(update)
+    else:
+        node_desc = query.data
+        query.edit_message_text(text=API().get_status_for_node(node_desc), reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def health_check(context):
@@ -84,7 +95,7 @@ def run_watch_dog(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
                              text="Watching for node status change")
 
-    context.job_queue.run_repeating(health_check, interval=300, first=1,
+    context.job_queue.run_repeating(health_check, interval=180, first=1,
                                     context=update.message.chat_id)
 
 

@@ -4,8 +4,10 @@ import requests
 import time
 from decouple import config
 
+from sshControl import NodeRestart
+
 nodes = dict()
-timeout = 300  # seconds
+timeout = 180  # seconds
 last_updated = time.time()  # when the last API request was sent
 
 
@@ -101,8 +103,19 @@ class API(ABC):
         for node in nodes:
             description = nodes[node]['meta']['description']
             status_connected = nodes[node]['status']['connected']
+            ip = nodes[node]['meta']['remote_addr']
 
             if not status_connected:
                 response.append(msg.format(description=description, status="\U0001F534"))
-
+                NodeRestart().restart(ip)
+                response.append("\U00002705 Node was restarted")
         return response
+
+    def get_node_api(self, node_name):
+        global nodes
+
+        self.get_update_from_api()
+        for node in nodes:
+            if nodes[node]['meta']['description'] == node_name:
+                print(nodes[node]['meta']['remote_addr'])
+                return nodes[node]['meta']['remote_addr']
