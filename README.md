@@ -23,7 +23,7 @@
 4. Clone the repository repository and rename the .env.example, data.db.example files removing the .example extension
 5. Put your APIs keys, registration code and your telegram username into the .env file
 6. Insert into the data.db the IP and authentication data, so the script could connect to your node
-6.1 Connect to the DB with a command: 
+6.1. Connect to the DB with a command: 
 ```
 sqlite3 data.db
 ```
@@ -40,7 +40,11 @@ INSERT INTO nodes(node_ip, auth_type, password, user) VALUES ("YOUR_NODE_IP", "A
 ```
 sudo -H pip install -r requirements.txt
 ```
-8. Create a service
+8. Run the script
+
+8.1. Run as a service
+
+8.1.1. Create a service
 ```
 sudo nano /etc/systemd/system/nodeBot.service
 ```
@@ -57,13 +61,25 @@ WantedBy=default.target
 ```
 Save changes.
 
-9. Reload the daemon and start the service:
+8.1.2. Reload the daemon and start the service:
 ```
 sudo chmod 664 /etc/systemd/system/nodeBot.service
 sudo systemctl daemon-reload
 sudo systemctl enable nodeBot.service
 sudo systemctl start nodeBot
 sudo systemctl status nodeBot
+```
+
+8.2. Run as a docker container
+
+From the project directory run:
+```
+docker compose up -d
+```
+
+To stop the bot, run:
+```
+docker compose down
 ```
 
 ## Examples
