@@ -65,3 +65,14 @@ sudo systemctl enable nodeBot.service
 sudo systemctl start nodeBot
 sudo systemctl status nodeBot
 ```
+
+## Examples
+
+List of running nodes:
+![Node List](./examples/nodes_list.png)
+
+Manual node restart:
+![Manual Restart](./examples/manual_restart.png)
+
+Automatic restart after node disconnects:
+![Automatic Restart](./examples/automatic_restart.png)
