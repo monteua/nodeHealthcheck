@@ -23,7 +23,11 @@
 4. Clone the repository repository and rename the .env.example, data.db.example files removing the .example extension
 5. Put your APIs keys, registration code and your telegram username into the .env file
 6. Insert into the data.db the IP and authentication data, so the script could connect to your node
-
+6.1 Connect to the DB with a command: 
+```
+sqlite3 data.db
+```
+Then add your nodes with a following SQL query:
 ```
 INSERT INTO nodes(node_ip, auth_type, password, user) VALUES ("YOUR_NODE_IP", "AUTH_TYPE", "AUTH_DATA", "USER")    
 ``` 
