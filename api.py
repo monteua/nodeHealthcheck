@@ -1,13 +1,13 @@
 from abc import ABC
+from sshControl import NodeRestart
 
 import requests
 import time
 from decouple import config
 
-from sshControl import NodeRestart
 
 nodes = dict()
-timeout = 180  # seconds
+timeout = 60  # seconds
 last_updated = time.time()  # when the last API request was sent
 
 
@@ -23,6 +23,13 @@ class API(ABC):
             print("Sending the api request")
             nodes = requests.get(self.endpoint).json()['nodes']
             last_updated = time.time()
+
+    def get_forced_update_from_api(self):
+        global nodes, last_updated
+
+        print("Sending the forced api request")
+        nodes = requests.get(self.endpoint).json()['nodes']
+        last_updated = time.time()
 
     def get_node_list(self):
         global nodes
@@ -107,11 +114,10 @@ class API(ABC):
 
             if not status_connected:
                 response.append(msg.format(description=description, status="\U0001F534"))
-                NodeRestart().restart(ip)
-                response.append("\U00002705 Node was restarted")
+                response.append(NodeRestart().restart(ip))
         return response
 
-    def get_node_api(self, node_name):
+    def get_node_ip(self, node_name):
         global nodes
 
         self.get_update_from_api()

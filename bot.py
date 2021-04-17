@@ -1,3 +1,5 @@
+from functools import partial
+
 import logging
 import telegram
 from decouple import config
@@ -21,9 +23,20 @@ def error(update, context):
 
 
 def send_keyboard(update, context):
-    keyboard = [[KeyboardButton('/nodes'), KeyboardButton('/manage'), KeyboardButton('/watchdog')]]
+    keyboard = [
+        [  # 1st row buttons
+            KeyboardButton('/nodes'),
+            KeyboardButton('/manage'),
+            KeyboardButton('/watchdog')
+        ],
+        [  # 2nd row buttons
+            KeyboardButton('/force_update'),
+            KeyboardButton('/help')
+        ]
+
+    ]
     resize_keyboard = True
-    one_time_keyboard = True
+    one_time_keyboard = False
     selective = True
 
     json_dict = {
@@ -38,8 +51,16 @@ def send_keyboard(update, context):
         reply_markup=telegram.ReplyKeyboardMarkup(keyboard, update))
 
 
-def send_nodes_status(update, context):
-    update.message.reply_text(API().get_status_for_nodes(), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+def send_nodes_status(update, context, is_forced):
+    if is_forced:
+        API().get_forced_update_from_api()
+
+    try:
+        update.callback_query.message.reply_text(API().get_status_for_nodes(), parse_mode=ParseMode.HTML,
+                                                 disable_web_page_preview=True)
+    except Exception:
+        update.message.reply_text(API().get_status_for_nodes(), parse_mode=ParseMode.HTML,
+                                  disable_web_page_preview=True)
 
 
 def get_node_details(update, context):
@@ -72,9 +93,8 @@ def button(update: Update, _: CallbackContext) -> None:
     if query.data == "back":
         get_node_details(update, "getUpdates")
     elif query.data == "restart_node":
-        NodeRestart().restart(API().get_node_api(node_desc))
         query.message.reply_text(text="Node was scheduled for restart")
-        send_nodes_status(update)
+        query.message.reply_text(text=NodeRestart().restart(API().get_node_ip(node_desc)))
     else:
         node_desc = query.data
         query.edit_message_text(text=API().get_status_for_node(node_desc), reply_markup=InlineKeyboardMarkup(keyboard))
@@ -99,16 +119,37 @@ def run_watch_dog(update, context):
                                     context=update.message.chat_id)
 
 
+def send_command_description(update, context):
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text="""List of available commands: \
+        \n/nodes - used to show the aggregated details for each node (status, description, version, etc.) \
+        \n/manage - used to show the details for particular node and restarts it (if needed) \
+        \n/watchdog - launches the monitoring script (it will check the status for each node and restarts it if it goes offline) \
+        \n/force_update - bypasses the limit of 1 minute for each api call and gets a fresh node statuses \
+        """)
+
+
 def main():
     updater = Updater(config('TELEGRAM_API_KEY'), use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler('start', send_keyboard, Filters.user(username=config('ADMIN_ID'))))
-    dp.add_handler(CommandHandler('nodes', send_nodes_status, Filters.user(username=config('ADMIN_ID'))))
+    dp.add_handler(
+        CommandHandler('nodes', partial(send_nodes_status, is_forced=False), Filters.user(username=config('ADMIN_ID')))
+    )
     dp.add_handler(CommandHandler('manage', get_node_details, Filters.user(username=config('ADMIN_ID'))))
     dp.add_handler(CallbackQueryHandler(button))
     dp.add_handler(
         CommandHandler('watchdog', run_watch_dog, Filters.user(username=config('ADMIN_ID')), pass_job_queue=True))
+    dp.add_handler(
+        CommandHandler(
+            'force_update',
+            partial(send_nodes_status, is_forced=True),
+            Filters.user(username=config('ADMIN_ID'))
+        )
+    )
+    dp.add_handler(CommandHandler('help', send_command_description))
 
     dp.add_error_handler(error)
 
