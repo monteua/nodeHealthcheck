@@ -15,6 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 chat_id = str()
 node_desc = str()
+is_watchdog_running = False
 
 
 def error(update, context):
@@ -109,14 +110,19 @@ def health_check(context):
 
 
 def run_watch_dog(update, context):
-    global chat_id
+    global chat_id, is_watchdog_running
 
-    chat_id = update.message.chat_id
-    context.bot.send_message(chat_id=update.message.chat_id,
-                             text="Watching for node status change")
+    if not is_watchdog_running:
+        chat_id = update.message.chat_id
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text="Watching for node status change")
+        is_watchdog_running = True
 
-    context.job_queue.run_repeating(health_check, interval=180, first=1,
-                                    context=update.message.chat_id)
+        context.job_queue.run_repeating(health_check, interval=180, first=1,
+                                        context=update.message.chat_id)
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text="Watchdog is already launched")
 
 
 def send_command_description(update, context):
