@@ -10,7 +10,7 @@ class NodeRestart:
 
     @staticmethod
     def restart(node_ip):
-        conn = sqlite3.connect(os.getcwd() + '/data.db')
+        conn = sqlite3.connect(os.path.dirname(__file__) + '/data.db')
         curs = conn.cursor()
 
         node_auth_type = curs.execute("SELECT auth_type FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
