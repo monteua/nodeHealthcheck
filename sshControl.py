@@ -51,6 +51,8 @@ class NodeRestart:
                 c.close()
             except TypeError:
                 return traceback.print_exc()
+            except Exception:
+                return "Unable to connect: " + node_ip
         else:
             conn.close()
             return "Node is not supported: " + node_ip
