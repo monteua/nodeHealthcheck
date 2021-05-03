@@ -11,6 +11,7 @@ pycparser==2.20
 PyNaCl==1.4.0
 python-decouple==3.4
 python-telegram-bot==13.4.1
+aiogram==2.13
 pytz==2021.1
 requests==2.25.1
 six==1.15.0
