@@ -94,7 +94,7 @@ async def callback_worker(call: types.CallbackQuery):
     global node_desc
 
     query = call.data
-    print(call)
+    print(str(call).encode('utf-8'))
 
     keyboard = types.InlineKeyboardMarkup()
 
