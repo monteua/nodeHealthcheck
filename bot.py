@@ -1,10 +1,10 @@
-from functools import partial
-
+import asyncio
 import logging
-import telegram
+from datetime import datetime
+
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.dispatcher.filters import BoundFilter
 from decouple import config
-from telegram import ParseMode, Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQueryHandler, Filters
 
 from api import API
 from sshControl import NodeRestart
@@ -12,156 +12,147 @@ from sshControl import NodeRestart
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(config('TELEGRAM_API_KEY'))
+dp = Dispatcher(bot)
+
 chat_id = str()
 node_desc = str()
 is_watchdog_running = False
+watchdog_timeout = 180
 
 
-def error(update, context):
-    """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+class CommandFilter(BoundFilter):
+    key = 'is_admin'
+
+    def __init__(self, is_admin):
+        self.is_admin = is_admin
+
+    async def check(self, message: types.Message):
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        return member.user.username == config("ADMIN_ID")
 
 
-def send_keyboard(update, context):
-    keyboard = [
-        [  # 1st row buttons
-            KeyboardButton('/nodes'),
-            KeyboardButton('/manage'),
-            KeyboardButton('/watchdog')
-        ],
-        [  # 2nd row buttons
-            KeyboardButton('/force_update'),
-            KeyboardButton('/help')
-        ]
+dp.filters_factory.bind(CommandFilter)
 
-    ]
+
+@dp.message_handler(commands=["start"], is_admin=True)
+async def send_keyboard(message: types.Message):
+    global chat_id
+
+    chat_id = message.chat.id
+
     resize_keyboard = True
     one_time_keyboard = False
     selective = True
 
-    json_dict = {
-        'keyboard': [[keyboard[0][0].to_dict(), keyboard[0][1].to_dict()]],
-        'resize_keyboard': resize_keyboard,
-        'one_time_keyboard': one_time_keyboard,
-        'selective': selective,
-    }
+    markup = types.ReplyKeyboardMarkup(
+        resize_keyboard=resize_keyboard,
+        one_time_keyboard=one_time_keyboard,
+        selective=selective
+    )
 
-    message = update.message.reply_text(
-        "Make your selection",
-        reply_markup=telegram.ReplyKeyboardMarkup(keyboard, update))
+    nodes = types.KeyboardButton('/Nodes')
+    manage = types.KeyboardButton("/ManageNodes")
+    watchdog = types.KeyboardButton("/RunWatchdog")
+
+    force_update = types.KeyboardButton("/UpdateStatus")
+    get_help = types.KeyboardButton("/Help")
+
+    markup.row(nodes, manage, watchdog)
+    markup.row(force_update, get_help)
+    await message.reply(text="Please make your selection", reply_markup=markup)
 
 
-def send_nodes_status(update, context, is_forced):
-    if is_forced:
+@dp.message_handler(commands=['Nodes', 'UpdateStatus'], is_admin=True)
+async def send_nodes_status(message: types.Message):
+    if "UpdateStatus" in message.text:
         API().get_forced_update_from_api()
 
-    try:
-        update.callback_query.message.reply_text(API().get_status_for_nodes(), parse_mode=ParseMode.HTML,
-                                                 disable_web_page_preview=True)
-    except Exception:
-        update.message.reply_text(API().get_status_for_nodes(), parse_mode=ParseMode.HTML,
-                                  disable_web_page_preview=True)
+    await message.answer(API().get_status_for_nodes(), disable_web_page_preview=True)
 
 
-def get_node_details(update, context):
-    keyboard = []
+@dp.message_handler(commands=['ManageNodes'], is_admin=True)
+async def get_node_details(message: types.Message):
+    keyboard = types.InlineKeyboardMarkup()
 
     for node_name in API().get_node_list():
-        keyboard.append([InlineKeyboardButton(text=node_name, callback_data=node_name)])
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+        keyboard.add(types.InlineKeyboardButton(text=node_name, callback_data=node_name))
 
     try:
-        update.callback_query.edit_message_text('please select the node',
-                                                reply_markup=reply_markup)
+        await message.edit_text(
+            text="Select the Node:",
+            reply_markup=keyboard
+        )
     except Exception:
-        update.message.reply_text('please select the node',
-                                  reply_markup=reply_markup)
+        await message.answer(text="Select the Node:", reply_markup=keyboard)
 
 
-def button(update: Update, _: CallbackContext) -> None:
+@dp.callback_query_handler(lambda call: True)
+async def callback_worker(call: types.CallbackQuery):
     global node_desc
 
-    query = update.callback_query
-    query.answer()
+    query = call.data
+    print(call)
 
-    keyboard = [
-        [InlineKeyboardButton(text="Restart Node", callback_data="restart_node")],
-        [InlineKeyboardButton(text="< Back", callback_data="back")]
-    ]
+    keyboard = types.InlineKeyboardMarkup()
 
-    if query.data == "back":
-        get_node_details(update, "getUpdates")
-    elif query.data == "restart_node":
-        query.message.reply_text(text="Node was scheduled for restart")
-        query.message.reply_text(text=NodeRestart().restart(API().get_node_ip(node_desc)))
+    keyboard.add(types.InlineKeyboardButton(text="Restart Node", callback_data="restart_node"))
+    keyboard.add(types.InlineKeyboardButton(text="< Back", callback_data="back"))
+
+    if query == "back":
+        await get_node_details(message=call.message)
+    elif query == "restart_node":
+        await bot.send_message(chat_id=call.message.chat.id, text="Node was scheduled for restart")
+        await bot.send_message(chat_id=call.message.chat.id, text=NodeRestart().restart(API().get_node_ip(node_desc)))
     else:
-        node_desc = query.data
-        query.edit_message_text(text=API().get_status_for_node(node_desc), reply_markup=InlineKeyboardMarkup(keyboard))
+        node_desc = query
+        await bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=API().get_status_for_node(query),
+            reply_markup=keyboard
+        )
 
 
-def health_check(context):
-    response = API().health_check()
-
-    if len(response) > 0:
-        context.bot.send_message(chat_id=chat_id,
-                                 text="\n".join(response))
-
-
-def run_watch_dog(update, context):
-    global chat_id, is_watchdog_running
-
-    if not is_watchdog_running:
-        chat_id = update.message.chat_id
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text="Watching for node status change")
-        is_watchdog_running = True
-
-        context.job_queue.run_repeating(health_check, interval=180, first=1,
-                                        context=update.message.chat_id)
-    else:
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text="Watchdog is already launched")
-
-
-def send_command_description(update, context):
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
+@dp.message_handler(commands=['Help'], is_admin=True)
+async def send_command_description(message: types.Message):
+    await message.answer(
         text="""List of available commands: \
-        \n/nodes - used to show the aggregated details for each node (status, description, version, etc.) \
-        \n/manage - used to show the details for particular node and restarts it (if needed) \
-        \n/watchdog - launches the monitoring script (it will check the status for each node and restarts it if it goes offline) \
-        \n/force_update - bypasses the limit of 1 minute for each api call and gets a fresh node statuses \
+        \n/Nodes - used to show the aggregated details for each node (status, description, version, etc.) \
+        \n/ManageNodes - used to show the details for particular node and restarts it (if needed) \
+        \n/RunWatchdog - launches the monitoring script (it will check the status for each node and \
+        restarts it if it goes offline) \
+        \n/UpdateStatus - bypasses the limit of 1 minute for each api call and gets a fresh node statuses \
+        \n/Help - get info about available commands
         """)
 
 
-def main():
-    updater = Updater(config('TELEGRAM_API_KEY'), use_context=True)
-    dp = updater.dispatcher
+async def health_check():
+    response = API().health_check()
 
-    dp.add_handler(CommandHandler('start', send_keyboard, Filters.user(username=config('ADMIN_ID'))))
-    dp.add_handler(
-        CommandHandler('nodes', partial(send_nodes_status, is_forced=False), Filters.user(username=config('ADMIN_ID')))
-    )
-    dp.add_handler(CommandHandler('manage', get_node_details, Filters.user(username=config('ADMIN_ID'))))
-    dp.add_handler(CallbackQueryHandler(button))
-    dp.add_handler(
-        CommandHandler('watchdog', run_watch_dog, Filters.user(username=config('ADMIN_ID')), pass_job_queue=True))
-    dp.add_handler(
-        CommandHandler(
-            'force_update',
-            partial(send_nodes_status, is_forced=True),
-            Filters.user(username=config('ADMIN_ID'))
-        )
-    )
-    dp.add_handler(CommandHandler('help', send_command_description))
+    if len(response) > 0:
+        await bot.send_message(chat_id=chat_id, text="\n".join(response))
 
-    dp.add_error_handler(error)
 
-    updater.start_polling()
-    updater.idle()
+@dp.message_handler(commands=['RunWatchdog'], is_admin=True)
+async def run_watch_dog(message: types.Message):
+    global chat_id, is_watchdog_running
+
+    if not is_watchdog_running:
+        chat_id = message.chat.id
+        await message.answer(text="Watching for node status change")
+        is_watchdog_running = True
+
+        while True:
+            await asyncio.sleep(watchdog_timeout)
+            now = datetime.utcnow()
+            print(f"{now}")
+            await health_check()
+    else:
+        await message.answer(text="Watchdog is already launched")
 
 
 if __name__ == '__main__':
-    main()
+    executor.start_polling(dp, skip_updates=True)
