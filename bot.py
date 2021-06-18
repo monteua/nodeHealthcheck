@@ -9,10 +9,10 @@ from decouple import config
 from api import API
 from sshControl import NodeRestart
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+logging.basicConfig(filename="log",
+                    filemode='a',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
-logging.basicConfig(level=logging.INFO)
 
 bot = Bot(config('TELEGRAM_API_KEY'))
 dp = Dispatcher(bot)
@@ -80,6 +80,8 @@ async def get_node_details(message: types.Message):
     for node_name in API().get_node_list():
         keyboard.add(types.InlineKeyboardButton(text=node_name, callback_data=node_name))
 
+    keyboard.add(types.InlineKeyboardButton(text="RESTART ALL", callback_data="restart_all"))
+
     try:
         await message.edit_text(
             text="Select the Node:",
@@ -94,7 +96,7 @@ async def callback_worker(call: types.CallbackQuery):
     global node_desc
 
     query = call.data
-    print(str(call).encode('utf-8'))
+    logging.info(str(call).encode('utf-8'))
 
     keyboard = types.InlineKeyboardMarkup()
 
@@ -106,6 +108,9 @@ async def callback_worker(call: types.CallbackQuery):
     elif query == "restart_node":
         await bot.send_message(chat_id=call.message.chat.id, text="Node was scheduled for restart")
         await bot.send_message(chat_id=call.message.chat.id, text=NodeRestart().restart(API().get_node_ip(node_desc)))
+    elif query == "restart_all":
+        await bot.send_message(chat_id=call.message.chat.id, text="Scheduling all nodes for restart")
+        await bot.send_message(chat_id=call.message.chat.id, text="\n".join(API().restart_all_nodes()))
     else:
         node_desc = query
         await bot.edit_message_text(
@@ -148,7 +153,7 @@ async def run_watch_dog(message: types.Message):
         while True:
             await asyncio.sleep(watchdog_timeout)
             now = datetime.utcnow()
-            print(f"{now}")
+            logging.info(f"{now}")
             await health_check()
     else:
         await message.answer(text="Watchdog is already launched")

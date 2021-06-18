@@ -4,6 +4,7 @@ __pycache__/
 venv/
 .idea/
 .DS_Store
+log
 
 # SQLite database files
 *.sqlite3

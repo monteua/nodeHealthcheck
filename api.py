@@ -1,15 +1,19 @@
-from abc import ABC
-from sshControl import NodeRestart
-
+import logging
 import requests
 import time
 from decouple import config
 
+from abc import ABC
+from sshControl import NodeRestart
 
 nodes = dict()
 timeout = 60  # seconds
 last_updated = time.time()  # when the last API request was sent
 
+logging.basicConfig(filename="log",
+                    filemode='a',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
 
 class API(ABC):
 
@@ -18,16 +22,16 @@ class API(ABC):
 
     def get_update_from_api(self):
         global nodes, timeout, last_updated
-        
+
         if len(nodes) == 0 or time.time() - last_updated > timeout:
-            print("Sending the api request")
+            logging.info("Sending the api request")
             nodes = requests.get(self.endpoint).json()['nodes']
             last_updated = time.time()
 
     def get_forced_update_from_api(self):
         global nodes, last_updated
 
-        print("Sending the forced api request")
+        logging.info("Sending the forced api request")
         nodes = requests.get(self.endpoint).json()['nodes']
         last_updated = time.time()
 
@@ -37,9 +41,15 @@ class API(ABC):
         self.get_update_from_api()
         return [nodes[node]['meta']['description'] for node in nodes]
 
+    def get_node_ips(self):
+        global nodes
+
+        self.get_update_from_api()
+        return [nodes[node]['meta']['remote_addr'] for node in nodes]
+
     def get_status_for_nodes(self):
         global nodes
-        
+
         response = list()
         msg = """{status} {description} | {gateway_pool} | v{version}"""
 
@@ -100,6 +110,24 @@ class API(ABC):
                     status_in_current_state_since=status_in_current_state_since
                 )
 
+    def get_node_ip(self, node_name):
+        global nodes
+
+        self.get_update_from_api()
+        for node in nodes:
+            if nodes[node]['meta']['description'] == node_name:
+                logging.info(nodes[node]['meta']['remote_addr'])
+                return nodes[node]['meta']['remote_addr']
+
+    def get_node_name(self, node_ip):
+        global nodes
+
+        self.get_update_from_api()
+        for node in nodes:
+            if nodes[node]['meta']['remote_addr'] == node_ip:
+                logging.info(nodes[node]['meta']['description'])
+                return nodes[node]['meta']['description']
+
     def health_check(self):
         global nodes
 
@@ -117,11 +145,16 @@ class API(ABC):
                 response.append(NodeRestart().restart(ip))
         return response
 
-    def get_node_ip(self, node_name):
+    def restart_all_nodes(self):
         global nodes
 
-        self.get_update_from_api()
-        for node in nodes:
-            if nodes[node]['meta']['description'] == node_name:
-                print(nodes[node]['meta']['remote_addr'])
-                return nodes[node]['meta']['remote_addr']
+        response = list()
+        msg = """{status} {description}"""
+
+        for ip in self.get_node_ips():
+            description = self.get_node_name(ip)
+
+            response.append(msg.format(description=description, status="\U0001F534"))
+            response.append(NodeRestart().restart(ip))
+
+        return response

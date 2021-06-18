@@ -1,9 +1,15 @@
+import logging
 import traceback
 import os
 import sqlite3
 import paramiko
 
 from decouple import config
+
+logging.basicConfig(filename="log",
+                    filemode='a',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
 
 
 class NodeRestart:
@@ -24,13 +30,13 @@ class NodeRestart:
 
                 c = paramiko.SSHClient()
                 c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                print("connecting")
+                logging.info("connecting")
                 if node_auth_type[0] == "password":
                     c.connect(hostname=node_ip, username=node_user[0], password=connection_password)
                 else:
                     c.connect(hostname=node_ip, username=node_user[0], pkey=connection_password)
 
-                print("connected")
+                logging.info("connected")
                 # command = "sudo systemctl restart presearch" // if you're running node as a service
                 command = "docker stop presearch-node ; " \
                           "docker rm presearch-node ; " \
@@ -43,11 +49,11 @@ class NodeRestart:
                           "docker run -dt --name presearch-node --restart=unless-stopped " \
                           "-v presearch-node-storage:/app/node " \
                           "-e REGISTRATION_CODE=" + config('REGISTRATION_CODE') + " presearch/node"
-                print("Executing {}".format(command))
+                logging.info("Executing {}".format(command))
                 stdin, stdout, stderr = c.exec_command(command)
-                print(stdout.read())
-                print("Errors")
-                print(stderr.read())
+                logging.info(stdout.read())
+                logging.info("Errors")
+                logging.info(stderr.read())
                 c.close()
             except TypeError:
                 return traceback.print_exc()
