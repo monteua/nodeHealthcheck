@@ -4,6 +4,7 @@ from datetime import datetime
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters import BoundFilter
+
 from decouple import config
 
 from api import API
@@ -141,6 +142,11 @@ async def health_check():
         await bot.send_message(chat_id=chat_id, text="\n".join(response))
 
 
+def repeat(coro, loop):
+    asyncio.ensure_future(coro(), loop=loop)
+    loop.call_later(watchdog_timeout, repeat, coro, loop)
+
+
 @dp.message_handler(commands=['RunWatchdog'], is_admin=True)
 async def run_watch_dog(message: types.Message):
     global chat_id, is_watchdog_running
@@ -150,14 +156,13 @@ async def run_watch_dog(message: types.Message):
         await message.answer(text="Watching for node status change")
         is_watchdog_running = True
 
-        while True:
-            await asyncio.sleep(watchdog_timeout)
-            now = datetime.utcnow()
-            logging.info(f"{now}")
-            await health_check()
+        loop.call_later(watchdog_timeout, repeat, health_check, loop)
+        now = datetime.utcnow()
+        logging.info(f"{now}")
     else:
         await message.answer(text="Watchdog is already launched")
 
 
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
     executor.start_polling(dp, skip_updates=True)
