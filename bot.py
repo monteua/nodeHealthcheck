@@ -61,8 +61,11 @@ async def send_keyboard(message: types.Message):
     force_update = types.KeyboardButton("/UpdateStatus")
     get_help = types.KeyboardButton("/Help")
 
-    markup.row(nodes, manage, watchdog)
-    markup.row(force_update, get_help)
+    stats = types.KeyboardButton("/Stats")
+    force_update_stats = types.KeyboardButton("/UpdateStats")
+
+    markup.row(nodes, manage, stats)
+    markup.row(watchdog, force_update, force_update_stats, get_help)
     await message.reply(text="Please make your selection", reply_markup=markup)
 
 
@@ -72,6 +75,14 @@ async def send_nodes_status(message: types.Message):
         API().get_forced_update_from_api()
 
     await message.answer(API().get_status_for_nodes(), disable_web_page_preview=True)
+
+
+@dp.message_handler(commands=['Stats', 'UpdateStats'], is_admin=True)
+async def send_nodes_stats(message: types.Message):
+    if "UpdateStats" in message.text:
+        API().get_stats_for_nodes(True)
+
+    await message.answer(API().get_nodes_stats_report(), disable_web_page_preview=True)
 
 
 @dp.message_handler(commands=['ManageNodes'], is_admin=True)
@@ -131,6 +142,8 @@ async def send_command_description(message: types.Message):
         \n/RunWatchdog - launches the monitoring script (it will check the status for each node and \
         restarts it if it goes offline) \
         \n/UpdateStatus - bypasses the limit of 1 minute for each api call and gets a fresh node statuses \
+        \n/Stats - display aggregated stats for each node \
+        \n/UpdateStats - bypasses the limit of 1 minute for each api call and gets a fresh node stats \
         \n/Help - get info about available commands
         """)
 
