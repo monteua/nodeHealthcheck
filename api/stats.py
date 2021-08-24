@@ -43,9 +43,10 @@ class Stats:
 
         try:
             for current_date in dates:
+                next_day = (datetime.strptime(current_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+
                 if self.curs.execute(''' SELECT count(id) FROM stats 
                                          WHERE date=? ''', (current_date, )).fetchone()[0] == 0:
-                    next_day = (datetime.strptime(current_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
                     logging.info("Sending API request for start date: " + current_date + " and end date: " + next_day)
 
                     # sending the request for the given date
@@ -65,12 +66,14 @@ class Stats:
                                           (public_key, node_description, date, earned_tokens))
 
                     self.conn.commit()
+                else:
+                    logging.info("NOT Sending API request for start date: "
+                                 + current_date
+                                 + " and end date: "
+                                 + next_day
+                                 + " since it's already present")
 
         except JSONDecodeError:
             logging.error("Unable to parse API response")
         finally:
             self.conn.close()
-
-
-if __name__ == '__main__':
-    Stats().store_nodes_earnings_stats() # TODO remove
