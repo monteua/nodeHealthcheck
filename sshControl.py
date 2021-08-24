@@ -6,7 +6,10 @@ import paramiko
 
 from decouple import config
 
-logging.basicConfig(filename="log",
+if not os.path.exists(os.path.dirname(__file__) + "/logs"):
+    os.makedirs(os.path.dirname(__file__) + "/logs")
+
+logging.basicConfig(filename=os.path.dirname(__file__) + "/logs/log",
                     filemode='a',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -14,14 +17,31 @@ logging.basicConfig(filename="log",
 
 class NodeRestart:
 
-    @staticmethod
-    def restart(node_ip):
-        conn = sqlite3.connect(os.path.dirname(__file__) + '/data.db')
-        curs = conn.cursor()
+    def __init__(self):
+        self.conn = sqlite3.connect(os.path.dirname(__file__) + '/data.db')
+        self.curs = self.conn.cursor()
+        self.table_exists()
 
-        node_auth_type = curs.execute("SELECT auth_type FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
-        node_password = curs.execute("SELECT password FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
-        node_user = curs.execute("SELECT user FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
+    def table_exists(self):
+        data = self.curs.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='nodes' ''')
+        if data.fetchone()[0] != 1:
+            logging.info("Creating a new table: nodes")
+            self.curs.execute(''' create table nodes
+                                (
+                                    node_id   INTEGER      not null
+                                        primary key autoincrement,
+                                    node_ip   VARCHAR(128),
+                                    auth_type VARCHAR(128),
+                                    password  VARCHAR(128),
+                                    user      VARCHAR(128) not null
+                                );
+                            ''')
+            self.conn.commit()
+
+    def restart(self, node_ip):
+        node_auth_type = self.curs.execute("SELECT auth_type FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
+        node_password = self.curs.execute("SELECT password FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
+        node_user = self.curs.execute("SELECT user FROM nodes WHERE node_ip = ?", (node_ip,)).fetchone()
 
         if node_user is not None:
             try:
@@ -60,8 +80,8 @@ class NodeRestart:
             except Exception:
                 return "Unable to connect: " + node_ip
         else:
-            conn.close()
+            self.conn.close()
             return "Node is not supported: " + node_ip
 
-        conn.close()
+        self.conn.close()
         return "\U0001F3D7 Executing the restart command" + "\n\U00002705 Node was successfully restarted"

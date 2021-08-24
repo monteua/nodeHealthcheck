@@ -5,6 +5,7 @@ venv/
 .idea/
 .DS_Store
 log
+logs/log
 
 # SQLite database files
 *.sqlite3
