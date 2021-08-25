@@ -64,7 +64,7 @@ class Graph:
         plt.title('Earnings Graph (past 30 days)')
 
         # function to show the plot
-        plt.gcf().set_size_inches(20, 10.5, forward=True)
+        plt.gcf().set_size_inches(25, 10.5, forward=True)
         plt.gcf().set_dpi(100)
         plt.legend()
 
