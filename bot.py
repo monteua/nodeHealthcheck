@@ -1,3 +1,5 @@
+import os
+
 import asyncio
 import logging
 from aiogram.types import InputFile
@@ -181,7 +183,7 @@ async def display_graph(message: types.Message):
     await message.answer("Preparing data for graph")
     Graph().generate_graph()
     await message.answer("Graph were generated. Sending the picture")
-    await message.answer_photo(InputFile("img/graph.png"), "Earnings Graph")
+    await message.answer_photo(InputFile(os.path.dirname(__file__) + "/img/graph.png"), "Earnings Graph")
 
 
 async def health_check():
