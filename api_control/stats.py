@@ -6,12 +6,13 @@ import sqlite3
 from datetime import datetime
 from datetime import timedelta
 
-from api import API
+from api_control.api import API
 
 
-class Stats:
+class Stats(API):
 
     def __init__(self):
+        super().__init__()
         self.conn = sqlite3.connect(os.path.dirname(os.path.dirname(__file__)) + '/data.db')
         self.curs = self.conn.cursor()
         self.table_exists()

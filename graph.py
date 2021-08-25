@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
-
-import os
-
 import sqlite3
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class Graph:
@@ -37,15 +35,25 @@ class Graph:
         conn.close()
         return self.stats
 
-
     def generate_graph(self):
-        # x axis values
-        x = [1, 2, 3]
-        # corresponding y axis values
-        y = [2, 4, 1]
+        stats = self.get_stats_for_last_30_days()
 
-        # plotting the points
-        plt.plot(x, y, label="Node1")
+        # x axis values
+        x = [datetime.strptime(i, "%Y-%m-%d").strftime("%b %-d") for i in list(reversed(list(stats.keys())))]
+
+        # nodes
+        nodes = list(stats.get(list(stats.keys())[0]))
+        min_value, max_value = 0, 0
+
+        for node in nodes:
+            # plotting the points for each node
+            # y axis values
+            y = [float(stats.get(date).get(node)) if stats.get(date).get(node) is not None else 0.0 for date in
+                 list(reversed(list(stats.keys())))]
+            min_value = min(y) if min(y) < min_value else min_value
+            max_value = max(y) if max(y) > max_value else max_value
+            plt.plot(x, y, label=node)
+
 
         # naming the x axis
         plt.xlabel('Date')
@@ -56,10 +64,10 @@ class Graph:
         plt.title('Earnings Graph (past 30 days)')
 
         # function to show the plot
+        plt.gcf().set_size_inches(20, 10.5, forward=True)
+        plt.gcf().set_dpi(100)
         plt.legend()
-        plt.show()
 
-
-if __name__ == "__main__":
-    #Graph().generate_graph()
-    Graph().get_stats_for_last_30_days()
+        plt.yticks(np.arange(min_value, max_value, 0.5))
+        #plt.show()
+        plt.savefig('img/graph.png')

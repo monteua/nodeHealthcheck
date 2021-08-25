@@ -6,6 +6,7 @@ venv/
 .DS_Store
 log
 logs/log
+img/
 
 # SQLite database files
 *.sqlite3

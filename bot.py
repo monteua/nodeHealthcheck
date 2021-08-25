@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from aiogram.types import InputFile
 
 from datetime import datetime
 from aiogram import Bot, Dispatcher, executor, types
@@ -7,8 +8,9 @@ from aiogram.dispatcher.filters import BoundFilter
 from aiogram.dispatcher.filters import Text
 from decouple import config
 
-from api.api import API
-from api.stats import Stats
+from api_control.api import API
+from api_control.stats import Stats
+from graph import Graph
 from sshControl import NodeRestart
 
 logging.basicConfig(filename="log",
@@ -174,9 +176,12 @@ async def send_command_description(message: types.Message):
 @dp.message_handler(commands=["Graph"], is_admin=True)
 async def display_graph(message: types.Message):
     await message.answer("Generating a graph. Please wait!")
+    await message.answer("Storing the stats into the DB")
     Stats().store_nodes_earnings_stats()
-    await message.answer("TODO", disable_web_page_preview=True)
-    # TODO
+    await message.answer("Preparing data for graph")
+    Graph().generate_graph()
+    await message.answer("Graph were generated. Sending the picture")
+    await message.answer_photo(InputFile("img/graph.png"), "Earnings Graph")
 
 
 async def health_check():
