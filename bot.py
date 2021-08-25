@@ -1,13 +1,16 @@
 import asyncio
 import logging
-from datetime import datetime
+from aiogram.types import InputFile
 
+from datetime import datetime
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters import BoundFilter
-
+from aiogram.dispatcher.filters import Text
 from decouple import config
 
-from api import API
+from api_control.api import API
+from api_control.stats import Stats
+from graph import Graph
 from sshControl import NodeRestart
 
 logging.basicConfig(filename="log",
@@ -38,6 +41,19 @@ class CommandFilter(BoundFilter):
 dp.filters_factory.bind(CommandFilter)
 
 
+async def set_commands(dp):
+    await dp.bot.set_my_commands([
+        types.BotCommand(command="nodes", description="Show Nodes"),
+        types.BotCommand(command="managenodes", description="Show Nodes Details Or Restart"),
+        types.BotCommand(command="runwatchdog", description="Start Node Monitoring Script"),
+        types.BotCommand(command="stats", description="Show Nodes Stats"),
+        types.BotCommand(command="updatestatus", description="Update Nodes"),
+        types.BotCommand(command="updatestats", description="Update Stats"),
+        types.BotCommand(command="help", description="Show Help"),
+        types.BotCommand(command="graph", description="Display Earnings Graph")
+    ])
+
+
 @dp.message_handler(commands=["start"], is_admin=True)
 async def send_keyboard(message: types.Message):
     global chat_id
@@ -54,22 +70,26 @@ async def send_keyboard(message: types.Message):
         selective=selective
     )
 
-    nodes = types.KeyboardButton('/Nodes')
-    manage = types.KeyboardButton("/ManageNodes")
-    watchdog = types.KeyboardButton("/RunWatchdog")
+    nodes = types.KeyboardButton('Nodes')
+    manage = types.KeyboardButton("ManageNodes")
+    force_update = types.KeyboardButton("UpdateStatus")
 
-    force_update = types.KeyboardButton("/UpdateStatus")
-    get_help = types.KeyboardButton("/Help")
+    stats = types.KeyboardButton("Stats")
+    force_update_stats = types.KeyboardButton("UpdateStats")
+    watchdog = types.KeyboardButton("RunWatchdog")
 
-    stats = types.KeyboardButton("/Stats")
-    force_update_stats = types.KeyboardButton("/UpdateStats")
+    get_help = types.KeyboardButton("Help")
+    get_graph = types.KeyboardButton("Graph")
 
-    markup.row(nodes, manage, stats)
-    markup.row(watchdog, force_update, force_update_stats, get_help)
+    markup.row(nodes, manage, force_update)
+    markup.row(stats, force_update_stats, watchdog)
+    markup.row(get_help, get_graph)
     await message.reply(text="Please make your selection", reply_markup=markup)
 
 
-@dp.message_handler(commands=['Nodes', 'UpdateStatus'], is_admin=True)
+@dp.message_handler(Text(equals=['Nodes'], ignore_case=True), is_admin=True)
+@dp.message_handler(Text(equals=['UpdateStatus'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["Nodes", "UpdateStatus"], is_admin=True)
 async def send_nodes_status(message: types.Message):
     if "UpdateStatus" in message.text:
         API().get_forced_update_from_api()
@@ -77,7 +97,9 @@ async def send_nodes_status(message: types.Message):
     await message.answer(API().get_status_for_nodes(), disable_web_page_preview=True)
 
 
-@dp.message_handler(commands=['Stats', 'UpdateStats'], is_admin=True)
+@dp.message_handler(Text(equals=['Stats'], ignore_case=True), is_admin=True)
+@dp.message_handler(Text(equals=['UpdateStats'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["Stats", "UpdateStats"], is_admin=True)
 async def send_nodes_stats(message: types.Message):
     if "UpdateStats" in message.text:
         API().get_stats_for_nodes(True)
@@ -85,7 +107,8 @@ async def send_nodes_stats(message: types.Message):
     await message.answer(API().get_nodes_stats_report(), disable_web_page_preview=True)
 
 
-@dp.message_handler(commands=['ManageNodes'], is_admin=True)
+@dp.message_handler(Text(equals=['ManageNodes'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["ManageNodes"], is_admin=True)
 async def get_node_details(message: types.Message):
     keyboard = types.InlineKeyboardMarkup()
 
@@ -133,7 +156,8 @@ async def callback_worker(call: types.CallbackQuery):
         )
 
 
-@dp.message_handler(commands=['Help'], is_admin=True)
+@dp.message_handler(Text(equals=['Help'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["Help"], is_admin=True)
 async def send_command_description(message: types.Message):
     await message.answer(
         text="""List of available commands: \
@@ -148,6 +172,18 @@ async def send_command_description(message: types.Message):
         """)
 
 
+@dp.message_handler(Text(equals=['Graph'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["Graph"], is_admin=True)
+async def display_graph(message: types.Message):
+    await message.answer("Generating a graph. Please wait!")
+    await message.answer("Storing the stats into the DB")
+    Stats().store_nodes_earnings_stats()
+    await message.answer("Preparing data for graph")
+    Graph().generate_graph()
+    await message.answer("Graph were generated. Sending the picture")
+    await message.answer_photo(InputFile("img/graph.png"), "Earnings Graph")
+
+
 async def health_check():
     response = API().health_check()
 
@@ -160,7 +196,8 @@ def repeat(coro, loop):
     loop.call_later(watchdog_timeout, repeat, coro, loop)
 
 
-@dp.message_handler(commands=['RunWatchdog'], is_admin=True)
+@dp.message_handler(Text(equals=['RunWatchdog'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["RunWatchdog"], is_admin=True)
 async def run_watch_dog(message: types.Message):
     global chat_id, is_watchdog_running
 
@@ -175,7 +212,6 @@ async def run_watch_dog(message: types.Message):
     else:
         await message.answer(text="Watchdog is already launched")
 
-
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=set_commands)

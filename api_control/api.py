@@ -1,3 +1,5 @@
+import os
+
 import logging
 import requests
 import time
@@ -12,7 +14,7 @@ timeout = 60  # seconds
 last_updated = time.time()  # when the last API request was sent
 last_updated_stats = time.time()
 
-logging.basicConfig(filename="log",
+logging.basicConfig(filename=os.path.dirname(os.path.dirname(__file__)) + "/log",
                     filemode='a',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -235,3 +237,13 @@ class API(ABC):
             response.append(NodeRestart().restart(ip))
 
         return response
+
+    def send_request_with_params(self, *args):
+        logging.info("Sending the api request with following params:" + str(args))
+        endpoint_with_params = self.endpoint
+
+        for i in args:
+            endpoint_with_params += "?" if "?" not in endpoint_with_params else "&"
+            endpoint_with_params += i
+        # print("RQ:", endpoint_with_params)
+        return requests.get(endpoint_with_params).json()
