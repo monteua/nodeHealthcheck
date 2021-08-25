@@ -72,4 +72,8 @@ class Graph:
 
         plt.yticks(np.arange(min_value, max_value, 0.5))
         #plt.show()
+
+        if not os.path.exists(os.path.dirname(__file__) + "/img"):
+            os.makedirs(os.path.dirname(__file__) + "/img")
+        
         plt.savefig(os.path.dirname(__file__) + '/img/graph.png')
