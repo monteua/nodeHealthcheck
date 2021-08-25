@@ -1,3 +1,5 @@
+import os
+
 from datetime import datetime, timedelta
 import sqlite3
 
@@ -11,7 +13,7 @@ class Graph:
         self.stats = dict()
 
     def get_stats_for_last_30_days(self):
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect(os.path.dirname(__file__) + '/data.db')
         curs = conn.cursor()
 
         today_date = datetime.today()
