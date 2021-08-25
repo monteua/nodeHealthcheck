@@ -72,4 +72,4 @@ class Graph:
 
         plt.yticks(np.arange(min_value, max_value, 0.5))
         #plt.show()
-        plt.savefig(sqlite3.connect(os.path.dirname(__file__) + '/img/graph.png'))
+        plt.savefig(os.path.dirname(__file__) + '/img/graph.png')
