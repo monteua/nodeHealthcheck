@@ -41,7 +41,7 @@ class Graph:
         stats = self.get_stats_for_last_30_days()
 
         # x axis values
-        x = [datetime.strptime(i, "%Y-%m-%d").strftime("%b %-d") for i in list(reversed(list(stats.keys())))]
+        x = list(set(datetime.strptime(i, "%Y-%m-%d").strftime("%b %-d") for i in list(reversed(list(stats.keys())))))
 
         # nodes
         nodes = list(stats.get(list(stats.keys())[0]))
@@ -75,5 +75,6 @@ class Graph:
 
         if not os.path.exists(os.path.dirname(__file__) + "/img"):
             os.makedirs(os.path.dirname(__file__) + "/img")
-        
+
         plt.savefig(os.path.dirname(__file__) + '/img/graph.png')
+        plt.close()
