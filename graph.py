@@ -41,21 +41,24 @@ class Graph:
         stats = self.get_stats_for_last_30_days()
 
         # x axis values
-        x = list(set(datetime.strptime(i, "%Y-%m-%d").strftime("%b %-d") for i in list(reversed(list(stats.keys())))))
+        x = [datetime.strptime(i, "%Y-%m-%d").strftime("%b %d") for i in list(reversed(list(stats.keys())))]
+        x.sort(key=lambda date: datetime.strptime(date, '%b %d'))
 
         # nodes
         nodes = list(stats.get(list(stats.keys())[0]))
         min_value, max_value = 0, 0
 
         for node in nodes:
+            dates_for_stats = [
+                datetime.strptime(i, "%Y-%m-%d").strftime("%Y-%m-%d") for i in list(reversed(list(stats.keys())))
+            ]
+            dates_for_stats.sort(key=lambda date: datetime.strptime(date, '%Y-%m-%d'))
             # plotting the points for each node
             # y axis values
-            y = [float(stats.get(date).get(node)) if stats.get(date).get(node) is not None else 0.0 for date in
-                 list(reversed(list(stats.keys())))]
+            y = [float(stats.get(date).get(node)) if stats.get(date).get(node) is not None else 0.0 for date in dates_for_stats]
             min_value = min(y) if min(y) < min_value else min_value
             max_value = max(y) if max(y) > max_value else max_value
             plt.plot(x, y, label=node)
-
 
         # naming the x axis
         plt.xlabel('Date')
@@ -67,11 +70,11 @@ class Graph:
 
         # function to show the plot
         plt.gcf().set_size_inches(25, 10.5, forward=True)
-        plt.gcf().set_dpi(100)
+        plt.gcf().set_dpi(200)
         plt.legend()
 
         plt.yticks(np.arange(min_value, max_value, 0.5))
-        #plt.show()
+        # plt.show()
 
         if not os.path.exists(os.path.dirname(__file__) + "/img"):
             os.makedirs(os.path.dirname(__file__) + "/img")
