@@ -45,7 +45,7 @@ class Graph:
         x.sort(key=lambda date: datetime.strptime(date, '%b %d'))
 
         # nodes
-        nodes = list(stats.get(list(stats.keys())[0]))
+        nodes = list(stats.get(list(stats.keys())[-1]))
         min_value, max_value = 0, 0
 
         for node in nodes:
