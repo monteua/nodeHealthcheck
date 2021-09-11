@@ -27,6 +27,7 @@ chat_id = str()
 node_desc = str()
 is_watchdog_running = False
 watchdog_timeout = 180
+stats_parsing_timeout = 24 * 60 * 60  # 24 hours
 
 
 class CommandFilter(BoundFilter):
@@ -52,7 +53,8 @@ async def set_commands(dp):
         types.BotCommand(command="updatestatus", description="Update Nodes"),
         types.BotCommand(command="updatestats", description="Update Stats"),
         types.BotCommand(command="help", description="Show Help"),
-        types.BotCommand(command="graph", description="Display Earnings Graph")
+        types.BotCommand(command="graph", description="Display Earnings Graph Per Node Per Day"),
+        types.BotCommand(command="aggregatedgraph", description="Display Aggregated Earnings Graph Per Day")
     ])
 
 
@@ -82,10 +84,11 @@ async def send_keyboard(message: types.Message):
 
     get_help = types.KeyboardButton("Help")
     get_graph = types.KeyboardButton("Graph")
+    get_aggregated_graph = types.KeyboardButton("Aggregated Graph")
 
     markup.row(nodes, manage, force_update)
     markup.row(stats, force_update_stats, watchdog)
-    markup.row(get_help, get_graph)
+    markup.row(get_help, get_graph, get_aggregated_graph)
     await message.reply(text="Please make your selection", reply_markup=markup)
 
 
@@ -170,6 +173,8 @@ async def send_command_description(message: types.Message):
         \n/UpdateStatus - bypasses the limit of 1 minute for each api call and gets a fresh node statuses \
         \n/Stats - display aggregated stats for each node \
         \n/UpdateStats - bypasses the limit of 1 minute for each api call and gets a fresh node stats \
+        \n/Graph - displaying earnings per each node for a past month \
+        \n/AggregatedGraph - displaying aggregated graph for all nodes per day for a past month \
         \n/Help - get info about available commands
         """)
 
@@ -178,12 +183,20 @@ async def send_command_description(message: types.Message):
 @dp.message_handler(commands=["Graph"], is_admin=True)
 async def display_graph(message: types.Message):
     await message.answer("Generating a graph. Please wait!")
-    await message.answer("Storing the stats into the DB")
     Stats().store_nodes_earnings_stats()
-    await message.answer("Preparing data for graph")
-    Graph().generate_graph()
+    Graph().generate_graph_per_node()
     await message.answer("Graph were generated. Sending the picture")
     await message.answer_photo(InputFile(os.path.dirname(__file__) + "/img/graph.png"), "Earnings Graph")
+
+
+@dp.message_handler(Text(equals=['Aggregated Graph'], ignore_case=True), is_admin=True)
+@dp.message_handler(commands=["AggregatedGraph"], is_admin=True)
+async def display_graph_aggregated(message: types.Message):
+    await message.answer("Generating an aggregated graph. Please wait!")
+    Stats().store_nodes_earnings_stats()
+    Graph().generate_graph_per_day_for_all_nodes()
+    await message.answer("Graph were generated. Sending the picture")
+    await message.answer_photo(InputFile(os.path.dirname(__file__) + "/img/graph.png"), "Aggregated Earnings Graph")
 
 
 async def health_check():
@@ -193,9 +206,20 @@ async def health_check():
         await bot.send_message(chat_id=chat_id, text="\n".join(response))
 
 
+async def get_stats():
+    logging.info("Getting updated stats in watchdog loop")
+    Stats().store_nodes_earnings_stats()
+    logging.info("Done")
+
+
 def repeat(coro, loop):
     asyncio.ensure_future(coro(), loop=loop)
     loop.call_later(watchdog_timeout, repeat, coro, loop)
+
+
+def repeat_for_stats(coro, loop):
+    asyncio.ensure_future(coro(), loop=loop)
+    loop.call_later(stats_parsing_timeout, repeat, coro, loop)
 
 
 @dp.message_handler(Text(equals=['RunWatchdog'], ignore_case=True), is_admin=True)
@@ -209,6 +233,7 @@ async def run_watch_dog(message: types.Message):
         is_watchdog_running = True
 
         loop.call_later(watchdog_timeout, repeat, health_check, loop)
+        loop.call_later(stats_parsing_timeout, repeat_for_stats, get_stats, loop)
         now = datetime.utcnow()
         logging.info(f"{now}")
     else:
