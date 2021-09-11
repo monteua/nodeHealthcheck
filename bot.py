@@ -75,12 +75,12 @@ async def send_keyboard(message: types.Message):
     )
 
     nodes = types.KeyboardButton('Nodes')
-    manage = types.KeyboardButton("ManageNodes")
-    force_update = types.KeyboardButton("UpdateStatus")
+    manage = types.KeyboardButton("Manage Nodes")
+    force_update = types.KeyboardButton("Update Status")
 
     stats = types.KeyboardButton("Stats")
-    force_update_stats = types.KeyboardButton("UpdateStats")
-    watchdog = types.KeyboardButton("RunWatchdog")
+    force_update_stats = types.KeyboardButton("Update Stats")
+    watchdog = types.KeyboardButton("Run Watchdog")
 
     get_help = types.KeyboardButton("Help")
     get_graph = types.KeyboardButton("Graph")
@@ -93,7 +93,7 @@ async def send_keyboard(message: types.Message):
 
 
 @dp.message_handler(Text(equals=['Nodes'], ignore_case=True), is_admin=True)
-@dp.message_handler(Text(equals=['UpdateStatus'], ignore_case=True), is_admin=True)
+@dp.message_handler(Text(equals=['Update Status'], ignore_case=True), is_admin=True)
 @dp.message_handler(commands=["Nodes", "UpdateStatus"], is_admin=True)
 async def send_nodes_status(message: types.Message):
     if "UpdateStatus" in message.text:
@@ -103,7 +103,7 @@ async def send_nodes_status(message: types.Message):
 
 
 @dp.message_handler(Text(equals=['Stats'], ignore_case=True), is_admin=True)
-@dp.message_handler(Text(equals=['UpdateStats'], ignore_case=True), is_admin=True)
+@dp.message_handler(Text(equals=['Update Stats'], ignore_case=True), is_admin=True)
 @dp.message_handler(commands=["Stats", "UpdateStats"], is_admin=True)
 async def send_nodes_stats(message: types.Message):
     if "UpdateStats" in message.text:
@@ -112,7 +112,7 @@ async def send_nodes_stats(message: types.Message):
     await message.answer(API().get_nodes_stats_report(), disable_web_page_preview=True)
 
 
-@dp.message_handler(Text(equals=['ManageNodes'], ignore_case=True), is_admin=True)
+@dp.message_handler(Text(equals=['Manage Nodes'], ignore_case=True), is_admin=True)
 @dp.message_handler(commands=["ManageNodes"], is_admin=True)
 async def get_node_details(message: types.Message):
     keyboard = types.InlineKeyboardMarkup()
@@ -222,7 +222,7 @@ def repeat_for_stats(coro, loop):
     loop.call_later(stats_parsing_timeout, repeat, coro, loop)
 
 
-@dp.message_handler(Text(equals=['RunWatchdog'], ignore_case=True), is_admin=True)
+@dp.message_handler(Text(equals=['Run Watchdog'], ignore_case=True), is_admin=True)
 @dp.message_handler(commands=["RunWatchdog"], is_admin=True)
 async def run_watch_dog(message: types.Message):
     global chat_id, is_watchdog_running
