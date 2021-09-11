@@ -37,7 +37,21 @@ class Graph:
         conn.close()
         return self.stats
 
-    def generate_graph(self):
+    def get_earnings_per_day_for_last_30_days(self):
+        conn = sqlite3.connect(os.path.dirname(__file__) + '/data.db')
+        curs = conn.cursor()
+
+        stats = curs.execute(''' SELECT date, SUM(earned_tokens) 
+                                    FROM stats 
+                                    GROUP BY date 
+                                    ORDER BY date 
+                                    DESC 
+                                    LIMIT 31; 
+                             ''').fetchall()
+        conn.close()
+        return sorted(stats)
+
+    def generate_graph_per_node(self):
         stats = self.get_stats_for_last_30_days()
 
         # x axis values
@@ -74,6 +88,43 @@ class Graph:
         plt.legend()
 
         plt.yticks(np.arange(min_value, max_value, 0.5))
+        # plt.show()
+
+        if not os.path.exists(os.path.dirname(__file__) + "/img"):
+            os.makedirs(os.path.dirname(__file__) + "/img")
+
+        plt.savefig(os.path.dirname(__file__) + '/img/graph.png')
+        plt.close()
+
+    def generate_graph_per_day_for_all_nodes(self):
+        stats = self.get_earnings_per_day_for_last_30_days()
+
+        # x axis values
+        x = [datetime.strptime(i[0], "%Y-%m-%d").strftime("%b %d") for i in list(list(stats))]
+
+        # y axis values
+        y = [float(day[1]) for day in stats]
+
+        plt.plot(x, y)
+
+        # naming the x axis
+        plt.xlabel('Date')
+        # naming the y axis
+        plt.ylabel('Tokens')
+
+        # giving a title to my graph
+        plt.title('Earnings Graph Per Day For All Nodes(past 30 days)')
+
+        # function to show the plot
+        plt.gcf().set_size_inches(25, 10.5, forward=True)
+        plt.gcf().set_dpi(200)
+
+        plt.yticks(np.arange(round(min(y)), round(max(y)), 1))
+
+        for i, v in enumerate(y):
+            plt.text(i + 0.2, v + 1, "%d" % v, ha="center")
+
+        plt.grid(True)
         # plt.show()
 
         if not os.path.exists(os.path.dirname(__file__) + "/img"):
