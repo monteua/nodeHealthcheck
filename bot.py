@@ -27,7 +27,7 @@ chat_id = str()
 node_desc = str()
 is_watchdog_running = False
 watchdog_timeout = 180
-stats_parsing_timeout = 24 * 60 * 60  # 24 hours
+stats_parsing_timeout = 12 * 60 * 60  # 12 hours
 
 
 class CommandFilter(BoundFilter):

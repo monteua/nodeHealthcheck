@@ -11,6 +11,7 @@ from sshControl import NodeRestart
 nodes = dict()
 nodes_stats = dict()
 timeout = 60  # seconds
+stats_timeout = 12 * 60 * 60  # 12 hours
 last_updated = time.time()  # when the last API request was sent
 last_updated_stats = time.time()
 
@@ -43,7 +44,7 @@ class API(ABC):
     def get_stats_for_nodes(self, is_forced):
         global nodes_stats, timeout, last_updated_stats
 
-        if len(nodes_stats) == 0 or time.time() - last_updated_stats > timeout and not is_forced:
+        if len(nodes_stats) == 0 or time.time() - last_updated_stats > stats_timeout and not is_forced:
             logging.info("Sending the api request with stats parameter")
             nodes_stats = requests.get(self.endpoint + "?stats=true").json()['nodes']
             last_updated_stats = time.time()
@@ -87,7 +88,7 @@ class API(ABC):
         return "\n".join(response)
 
     def get_status_for_node(self, node_description):
-        global nodes_stats
+        global nodes_stats, nodes
 
         msg = """+------------------------------------+ \
         \nName: {description}\nURL: {url}\nServer Description: {server_description} \
@@ -102,21 +103,24 @@ class API(ABC):
         \n+------------------------------------+"""
 
         self.get_stats_for_nodes(False)
+        self.get_update_from_api()
         for node in nodes_stats:
             if nodes_stats[node]['meta']['description'] == node_description:
-                description = nodes_stats[node]['meta']['description']
-                url = nodes_stats[node]['meta']['url']
-                server_description = nodes_stats[node]['meta']['server_description']
-                server_url = nodes_stats[node]['meta']['server_url']
-                gateway_pool = nodes_stats[node]['meta']['gateway_pool']
-                remote_addr = nodes_stats[node]['meta']['remote_addr']
-                version = nodes_stats[node]['meta']['version']
-                status_connected = nodes_stats[node]['status']['connected']
-                status_blocked = nodes_stats[node]['status']['blocked']
-                status_in_current_state_since = nodes_stats[node]['status']['in_current_state_since']
-                status_minutes_in_current_state = nodes_stats[node]['status']['minutes_in_current_state']
+                
+                # getting main information from the fresh api response (light api request without stats parameter)
+                description = nodes[node]['meta']['description']
+                url = nodes[node]['meta']['url']
+                server_description = nodes[node]['meta']['server_description']
+                server_url = nodes[node]['meta']['server_url']
+                gateway_pool = nodes[node]['meta']['gateway_pool']
+                remote_addr = nodes[node]['meta']['remote_addr']
+                version = nodes[node]['meta']['version']
+                status_connected = nodes[node]['status']['connected']
+                status_blocked = nodes[node]['status']['blocked']
+                status_in_current_state_since = nodes[node]['status']['in_current_state_since']
+                status_minutes_in_current_state = nodes[node]['status']['minutes_in_current_state']
 
-                # stats
+                # stats - getting cached response for node, to avoid rate limit (heavy api call)
                 number_of_connections = nodes_stats[node]['period']['connections']['num_connections']
                 number_of_disconnections = nodes_stats[node]['period']['disconnections']['num_disconnections']
                 reliability_score = nodes_stats[node]['period']['avg_reliability_score']
