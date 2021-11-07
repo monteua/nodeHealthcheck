@@ -87,7 +87,8 @@ class Graph:
         plt.gcf().set_dpi(200)
         plt.legend()
 
-        plt.yticks(np.arange(min_value, max_value, 0.5))
+        step = 0.1 if max_value < 10 else 0.5
+        plt.yticks(np.arange(min_value, max_value, step))
         plt.grid(True)
         # plt.show()
 
@@ -120,10 +121,11 @@ class Graph:
         plt.gcf().set_size_inches(25, 10.5, forward=True)
         plt.gcf().set_dpi(200)
 
-        plt.yticks(np.arange(round(min(y)), round(max(y)), 1))
+        step = 0.5 if round(max(y)) < 20 else 1
+        plt.yticks(np.arange(round(min(y)), round(max(y)), step))
 
         for i, v in enumerate(y):
-            plt.text(i + 0.2, v + 1, "%d" % v, ha="center")
+            plt.text(i + 0.3, v + 0.3, "%.2f" % v, ha="center")
 
         plt.grid(True)
         # plt.show()
