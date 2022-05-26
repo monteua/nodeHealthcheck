@@ -24,7 +24,7 @@ logging.basicConfig(filename=os.path.dirname(os.path.dirname(__file__)) + "/log"
 class API(ABC):
 
     def __init__(self):
-        self.endpoint = "https://nodes.presearch.org/api/nodes/status/" + config('API_KEY')
+        self.endpoint = "https://nodes.presearch.com/api/nodes/status/" + config('API_KEY')
 
     def get_update_from_api(self):
         global nodes, timeout, last_updated
@@ -121,11 +121,18 @@ class API(ABC):
                 status_minutes_in_current_state = nodes[node]['status']['minutes_in_current_state']
 
                 # stats - getting cached response for node, to avoid rate limit (heavy api call)
-                number_of_connections = nodes_stats[node]['period']['connections']['num_connections']
-                number_of_disconnections = nodes_stats[node]['period']['disconnections']['num_disconnections']
-                reliability_score = nodes_stats[node]['period']['avg_reliability_score']
-                requests_received = nodes_stats[node]['period']['total_requests']
-                pre_earned = nodes_stats[node]['period']['total_pre_earned']
+                try:
+                    number_of_connections = nodes_stats[node]['period']['connections']['num_connections']
+                    number_of_disconnections = nodes_stats[node]['period']['disconnections']['num_disconnections']
+                    reliability_score = nodes_stats[node]['period']['avg_reliability_score']
+                    requests_received = nodes_stats[node]['period']['total_requests']
+                    pre_earned = nodes_stats[node]['period']['total_pre_earned']
+                except KeyError:
+                    number_of_connections = 0
+                    number_of_disconnections = 0
+                    reliability_score = 0
+                    requests_received = 0
+                    pre_earned = 0
 
                 day = int(int(status_minutes_in_current_state) / 1440)
                 hour = int(int(status_minutes_in_current_state) % 1440 / 60)

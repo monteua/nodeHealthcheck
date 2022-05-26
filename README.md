@@ -17,8 +17,8 @@
 ## Setup Instruction
 
 1. Get the API token from the [@BotFather](https://t.me/BotFather)
-2. Get the Node API key from the Node Stats page: https://nodes.presearch.org/node/xxxxx/stats
-3. Get the registration code from the [Node Dashboard](https://nodes.presearch.org/dashboard)
+2. Get the Node API key from the Node Stats page: https://nodes.presearch.com/node/xxxxx/stats
+3. Get the registration code from the [Node Dashboard](https://nodes.presearch.com/dashboard)
 
 4. Clone the repository repository and rename the .env.example, data.db.example files removing the .example extension
 5. Put your APIs keys, registration code and your telegram username into the .env file
