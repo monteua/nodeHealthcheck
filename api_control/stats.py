@@ -56,17 +56,20 @@ class Stats(API):
                     )
 
                     # get data
-                    for node in response['nodes']:
-                        public_key = node
-                        node_description = response['nodes'][node]['meta']['description']
-                        date = current_date
-                        earned_tokens = response['nodes'][node]['period']['total_pre_earned']
+                    try:
+                        for node in response['nodes']:
+                            public_key = node
+                            node_description = response['nodes'][node]['meta']['description']
+                            date = current_date
+                            earned_tokens = response['nodes'][node]['period']['total_pre_earned']
 
-                        self.curs.execute(''' INSERT INTO stats(node_public_key, node_description, date, earned_tokens)
-                                              VALUES (?, ?, ?, ?) ''',
-                                          (public_key, node_description, date, earned_tokens))
+                            self.curs.execute(''' INSERT INTO stats(node_public_key, node_description, date, earned_tokens)
+                                                  VALUES (?, ?, ?, ?) ''',
+                                              (public_key, node_description, date, earned_tokens))
 
-                    self.conn.commit()
+                        self.conn.commit()
+                    except KeyError:
+                        logging.error(response)
                 else:
                     logging.info("NOT Sending API request for start date: "
                                  + current_date
