@@ -3,6 +3,7 @@ import os
 import logging
 import requests
 import time
+from aiogram import types
 from decouple import config
 
 from abc import ABC
@@ -25,6 +26,14 @@ class API(ABC):
 
     def __init__(self):
         self.endpoint = "https://nodes.presearch.com/api/nodes/status/" + config('API_KEY')
+
+    def send_request(self, endpoint, message: types.Message):
+        response = requests.get(endpoint).json()
+
+        if response['success']:
+            return response['nodes']
+        else:
+            await message.answer(response['error'], disable_web_page_preview=True)
 
     def get_update_from_api(self):
         global nodes, timeout, last_updated
@@ -170,7 +179,7 @@ class API(ABC):
                 \nNumber of Connections: {number_of_connections}\nNumber of Disconnections: {number_of_disconnections} \
                 \nReliability Score: {reliability_score}\nRequests Received: {requests_received} \
                 \nPRE earned: {pre_earned}"""
-        result_msg = ""
+        result_msg = []
 
         self.get_stats_for_nodes(False)
         for node in nodes_stats:
@@ -186,7 +195,7 @@ class API(ABC):
             requests_received = nodes_stats[node]['period']['total_requests']
             pre_earned = nodes_stats[node]['period']['total_pre_earned']
 
-            result_msg += msg.format(
+            result_msg.append(msg.format(
                 description=description,
                 gateway_pool=gateway_pool,
                 remote_addr=remote_addr,
@@ -196,7 +205,7 @@ class API(ABC):
                 reliability_score=str(round(reliability_score, 2)) + " \u26a0\ufe0f" if int(
                     reliability_score) < 70 else str(round(reliability_score, 2)) + " \U0001f7e2",
                 requests_received=requests_received,
-                pre_earned=round(pre_earned, 2)
+                pre_earned=round(pre_earned, 2))
             )
         return result_msg
 
