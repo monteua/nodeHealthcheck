@@ -27,7 +27,7 @@ class API(ABC):
     def __init__(self):
         self.endpoint = "https://nodes.presearch.com/api/nodes/status/" + config('API_KEY')
 
-    def send_request(self, endpoint, message: types.Message):
+    async def send_request(self, endpoint, message: types.Message):
         response = requests.get(endpoint).json()
 
         if response['success']:
