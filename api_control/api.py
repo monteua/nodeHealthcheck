@@ -170,7 +170,7 @@ class API(ABC):
     def get_nodes_stats_report(self):
         global nodes_stats
 
-        msg = """\n+-{currentNode}/{totalNodes}-------------------------------+ \
+        msg = """\n+-XX/YY-------------------------------+ \
                 \nName: {description} \
                 \nGateway Pool: {gateway_pool}\nRemote Address: {remote_addr} \
                 \nVersion: {version} \
