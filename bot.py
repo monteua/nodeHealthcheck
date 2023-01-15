@@ -114,7 +114,7 @@ async def send_nodes_stats(message: types.Message):
 
     for i in range(0, len(nodes_reports)):
         await message.answer(
-            nodes_reports[i].replace("XX", count).replace("YY", len(nodes_reports)), disable_web_page_preview=True
+            nodes_reports[i].replace("XX", str(count)).replace("YY", str(len(nodes_reports))), disable_web_page_preview=True
         )
         count += 1
 
