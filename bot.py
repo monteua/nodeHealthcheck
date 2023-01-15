@@ -109,8 +109,15 @@ async def send_nodes_stats(message: types.Message):
     if "UpdateStats" in message.text:
         API().get_stats_for_nodes(True)
 
-    for node_report in API().get_nodes_stats_report():
-        await message.answer(node_report, disable_web_page_preview=True)
+    count = 1
+    nodes_reports = API().get_nodes_stats_report()
+
+    for i in range(0, len(nodes_reports)):
+        await message.answer(nodes_reports[i].format(
+            currentNode=count,
+            totalNodes=len(nodes_reports)
+        ), disable_web_page_preview=True)
+        count += 1
 
 
 @dp.message_handler(Text(equals=['Manage Nodes'], ignore_case=True), is_admin=True)

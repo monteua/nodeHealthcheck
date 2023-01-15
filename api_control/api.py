@@ -170,7 +170,7 @@ class API(ABC):
     def get_nodes_stats_report(self):
         global nodes_stats
 
-        msg = """\n+------------------------------------+ \
+        msg = """\n+-{currentNode}/{totalNodes}-------------------------------+ \
                 \nName: {description} \
                 \nGateway Pool: {gateway_pool}\nRemote Address: {remote_addr} \
                 \nVersion: {version} \
@@ -178,7 +178,8 @@ class API(ABC):
                 \nStats [24h] \
                 \nNumber of Connections: {number_of_connections}\nNumber of Disconnections: {number_of_disconnections} \
                 \nReliability Score: {reliability_score}\nRequests Received: {requests_received} \
-                \nPRE earned: {pre_earned}"""
+                \nPRE earned: {pre_earned} \
+                \n+------------------------------------+"""
         result_msg = []
 
         self.get_stats_for_nodes(False)
